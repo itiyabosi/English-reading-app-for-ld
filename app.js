@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.04";
+const APP_VERSION = "1.05";
 
 // Firebase設定
 const firebaseConfig = {
