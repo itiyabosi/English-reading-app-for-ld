@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.07";
+const APP_VERSION = "1.08";
 
 // Firebase設定
 const firebaseConfig = {
@@ -2445,11 +2445,15 @@ function levenshteinDistance(str1, str2) {
 
 // 初期化関数（type="module"スクリプトはDOM読み込み後に実行される）
 function initializeDOMElements() {
+    console.log('=== 初期化開始 ===');
     console.log('英語音読トレーニングアプリが起動しました');
+    console.log('APP_VERSION:', APP_VERSION);
+    console.log('document.readyState:', document.readyState);
     console.log('スコアを確認するには: printScoresToConsole()');
     console.log('スコアをCSV出力するには: exportScoresToCSV()');
 
     // DOM要素の取得
+    console.log('DOM要素取得を開始...');
     elements = {
         startScreen: document.getElementById('start-screen'),
         questionScreen: document.getElementById('question-screen'),
@@ -2495,14 +2499,23 @@ function initializeDOMElements() {
     };
 
     // 要素が正しく取得できたか確認
-    console.log('DOM要素の取得完了:', elements.startBtn ? '成功' : '失敗');
+    console.log('DOM要素の取得完了');
+    console.log('  - startBtn:', elements.startBtn);
+    console.log('  - app-version:', document.getElementById('app-version'));
+
     if (!elements.startBtn) {
-        console.error('スタートボタンが見つかりません！');
+        console.error('❌ スタートボタンが見つかりません！');
+        console.error('  HTML内に id="start-btn" の要素が存在するか確認してください');
         return;
     }
+    console.log('✓ スタートボタンが見つかりました');
 
     // イベントリスナーの設定
-    elements.startBtn.addEventListener('click', startQuiz);
+    console.log('イベントリスナーを設定中...');
+    elements.startBtn.addEventListener('click', () => {
+        console.log('>>> スタートボタンがクリックされました！');
+        startQuiz();
+    });
     elements.restartBtn.addEventListener('click', resetQuiz);
     elements.exportCsvBtn.addEventListener('click', exportScoresToCSV);
     elements.viewHistoryBtn.addEventListener('click', showHistory);
