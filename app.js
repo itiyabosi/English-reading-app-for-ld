@@ -915,6 +915,11 @@ function showResults() {
     const avgReadingTime = app.results.reduce((sum, r) => sum + r.readingTime, 0) / app.results.length;
     const avgAnswerTime = app.results.reduce((sum, r) => sum + r.answerTime, 0) / app.results.length;
 
+    // WPM計算（全問の合計単語数 / 合計音読時間（分））
+    const totalWords = app.questions.reduce((sum, q) => sum + q.passage.split(/\s+/).length, 0);
+    const totalReadingTime = app.results.reduce((sum, r) => sum + r.readingTime, 0);
+    const avgWPM = totalReadingTime > 0 ? Math.round(totalWords / (totalReadingTime / 60)) : 0;
+
     // スコアをローカルストレージに保存
     saveScore({
         date: new Date().toISOString(),
@@ -922,13 +927,13 @@ function showResults() {
         totalQuestions: app.totalQuestions,
         avgReadingTime: avgReadingTime,
         avgAnswerTime: avgAnswerTime,
+        avgWPM: avgWPM,
         results: app.results
     });
 
     elements.progress.style.width = '100%';
     document.getElementById('final-score').textContent = `${correctCount}/${app.totalQuestions}`;
-    document.getElementById('avg-reading-time').textContent = `${avgReadingTime.toFixed(1)}秒`;
-    document.getElementById('avg-answer-time').textContent = `${avgAnswerTime.toFixed(1)}秒`;
+    document.getElementById('avg-wpm').textContent = `${avgWPM} WPM`;
 
     // 詳細結果（全5回分のスコアシート）
     const detailsContainer = document.getElementById('result-details');
@@ -946,24 +951,25 @@ function showResults() {
         <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">問題</th>
         <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">正誤</th>
         <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">音読時間</th>
-        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">解答時間</th>
-        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">合計時間</th>
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">WPM</th>
     `;
     table.appendChild(headerRow);
 
     // 各問題の結果行
-    app.results.forEach((result) => {
+    app.results.forEach((result, index) => {
         const row = document.createElement('tr');
-        const totalTime = result.readingTime + result.answerTime;
         const correctMark = result.isCorrect ? '✓' : '✗';
         const correctColor = result.isCorrect ? '#28a745' : '#dc3545';
+
+        // WPM計算（各問題の単語数 / 音読時間（分））
+        const questionWords = app.questions[index].passage.split(/\s+/).length;
+        const wpm = result.readingTime > 0 ? Math.round(questionWords / (result.readingTime / 60)) : 0;
 
         row.innerHTML = `
             <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">第${result.questionNumber}問</td>
             <td style="border: 1px solid #ddd; padding: 10px; text-align: center; color: ${correctColor}; font-weight: bold; font-size: 1.2em;">${correctMark}</td>
             <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${result.readingTime.toFixed(1)}秒</td>
-            <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${result.answerTime.toFixed(1)}秒</td>
-            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">${totalTime.toFixed(1)}秒</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">${wpm} WPM</td>
         `;
         table.appendChild(row);
     });
@@ -971,15 +977,12 @@ function showResults() {
     // 合計行
     const totalRow = document.createElement('tr');
     const totalReadingTime = app.results.reduce((sum, r) => sum + r.readingTime, 0);
-    const totalAnswerTime = app.results.reduce((sum, r) => sum + r.answerTime, 0);
-    const grandTotal = totalReadingTime + totalAnswerTime;
 
     totalRow.innerHTML = `
-        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">合計</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">平均</td>
         <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${correctCount}/${app.totalQuestions}</td>
-        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${totalReadingTime.toFixed(1)}秒</td>
-        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${totalAnswerTime.toFixed(1)}秒</td>
-        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${grandTotal.toFixed(1)}秒</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${avgReadingTime.toFixed(1)}秒</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${avgWPM} WPM</td>
     `;
     table.appendChild(totalRow);
 
@@ -1095,6 +1098,7 @@ async function saveScoreToFirebase(scoreData) {
             totalQuestions: scoreData.totalQuestions,
             avgReadingTime: parseFloat(scoreData.avgReadingTime.toFixed(2)),
             avgAnswerTime: parseFloat(scoreData.avgAnswerTime.toFixed(2)),
+            avgWPM: scoreData.avgWPM || 0, // WPMを追加
             // 各問題の結果（問題文は送信しない）
             results: scoreData.results.map(r => ({
                 questionNumber: r.questionNumber,
@@ -1404,6 +1408,9 @@ function displayHistory() {
         const date = new Date(score.date).toLocaleString('ja-JP');
         const accuracy = ((score.correctCount / score.totalQuestions) * 100).toFixed(1);
 
+        // WPMを表示（保存されていない古いデータの場合は計算）
+        const wpm = score.avgWPM || 0;
+
         historyItem.innerHTML = `
             <div class="history-item-header">
                 <span class="history-item-date">${date}</span>
@@ -1415,12 +1422,8 @@ function displayHistory() {
                     <div class="history-stat-value">${score.correctCount}/${score.totalQuestions}</div>
                 </div>
                 <div class="history-stat">
-                    <div class="history-stat-label">音読時間</div>
-                    <div class="history-stat-value">${score.avgReadingTime.toFixed(1)}秒</div>
-                </div>
-                <div class="history-stat">
-                    <div class="history-stat-label">解答時間</div>
-                    <div class="history-stat-value">${score.avgAnswerTime.toFixed(1)}秒</div>
+                    <div class="history-stat-label">音読速度</div>
+                    <div class="history-stat-value">${wpm} WPM</div>
                 </div>
             </div>
         `;
@@ -1495,6 +1498,7 @@ function displayProgressChart(userScores) {
         const date = new Date(score.timestamp);
         const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
         const accuracy = (score.correctCount / score.totalQuestions) * 100;
+        const wpm = score.avgWPM || 0;
 
         return {
             index: index + 1,
@@ -1502,13 +1506,12 @@ function displayProgressChart(userScores) {
             accuracy: accuracy.toFixed(1),
             correctCount: score.correctCount,
             totalQuestions: score.totalQuestions,
-            avgReadingTime: score.avgReadingTime.toFixed(1),
-            avgAnswerTime: score.avgAnswerTime.toFixed(1)
+            wpm: wpm
         };
     });
 
-    // シンプルなテキストベースのグラフを作成
-    let chartHTML = '<div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #667eea;">';
+    // 正答率グラフ
+    let chartHTML = '<div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #667eea; margin-bottom: 20px;">';
     chartHTML += '<h3 style="color: #667eea; margin-bottom: 20px; text-align: center;">正答率の推移</h3>';
     chartHTML += '<div style="display: flex; flex-direction: column; gap: 10px;">';
 
@@ -1529,6 +1532,32 @@ function displayProgressChart(userScores) {
     });
 
     chartHTML += '</div>';
+    chartHTML += '</div>';
+
+    // WPMグラフを追加
+    const maxWPM = Math.max(...chartData.map(d => d.wpm), 100); // 最大値または100のいずれか大きい方
+    chartHTML += '<div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #17a2b8;">';
+    chartHTML += '<h3 style="color: #17a2b8; margin-bottom: 20px; text-align: center;">音読速度（WPM）の推移</h3>';
+    chartHTML += '<div style="display: flex; flex-direction: column; gap: 10px;">';
+
+    chartData.forEach((data) => {
+        const barWidth = (data.wpm / maxWPM) * 100;
+        // WPMの色分け：150以上=緑、100-150=黄、100未満=赤
+        const barColor = data.wpm >= 150 ? '#28a745' : data.wpm >= 100 ? '#ffc107' : '#dc3545';
+
+        chartHTML += `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="min-width: 120px; font-size: 0.9em; color: #666;">${data.date}</div>
+                <div style="flex: 1; background: #f0f0f0; border-radius: 5px; height: 30px; position: relative;">
+                    <div style="background: ${barColor}; height: 100%; width: ${barWidth}%; border-radius: 5px; transition: width 0.3s;"></div>
+                    <div style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); font-weight: bold; color: #333; font-size: 0.9em;">${data.wpm} WPM</div>
+                </div>
+            </div>
+        `;
+    });
+
+    chartHTML += '</div>';
+    chartHTML += '<p style="margin-top: 15px; font-size: 0.85em; color: #666; text-align: center;">目安: 150 WPM以上=優秀 / 100-150 WPM=良好 / 100 WPM未満=要練習</p>';
     chartHTML += '</div>';
 
     elements.progressChart.innerHTML = chartHTML;
