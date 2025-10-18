@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.06";
+const APP_VERSION = "1.07";
 
 // Firebase設定
 const firebaseConfig = {
@@ -2531,5 +2531,10 @@ function initializeDOMElements() {
     initializeFirebase();
 }
 
-// アプリを初期化
-initializeDOMElements();
+// DOMが完全に読み込まれてから初期化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDOMElements);
+} else {
+    // すでに読み込み済みの場合は即座に実行
+    initializeDOMElements();
+}
