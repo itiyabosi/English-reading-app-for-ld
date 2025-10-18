@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.05";
+const APP_VERSION = "1.06";
 
 // Firebase設定
 const firebaseConfig = {
@@ -2444,7 +2444,7 @@ function levenshteinDistance(str1, str2) {
 }
 
 // 初期化関数（type="module"スクリプトはDOM読み込み後に実行される）
-function initializeApp() {
+function initializeDOMElements() {
     console.log('英語音読トレーニングアプリが起動しました');
     console.log('スコアを確認するには: printScoresToConsole()');
     console.log('スコアをCSV出力するには: exportScoresToCSV()');
@@ -2532,4 +2532,4 @@ function initializeApp() {
 }
 
 // アプリを初期化
-initializeApp();
+initializeDOMElements();
