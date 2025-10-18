@@ -1,3 +1,6 @@
+// アプリバージョン
+const APP_VERSION = "1.04";
+
 // Firebase設定
 const firebaseConfig = {
     apiKey: "AIzaSyBkTPGO_jtpyDwRopQKZBoBEkD2bP2S_CE",
@@ -58,65 +61,8 @@ const app = {
 // タイマー更新用
 let timerInterval = null;
 
-// DOM要素の取得
-const elements = {
-    startScreen: document.getElementById('start-screen'),
-    questionScreen: document.getElementById('question-screen'),
-    resultScreen: document.getElementById('result-screen'),
-    historyScreen: document.getElementById('history-screen'),
-    progressScreen: document.getElementById('progress-screen'),
-    loading: document.getElementById('loading'),
-    startBtn: document.getElementById('start-btn'),
-    restartBtn: document.getElementById('restart-btn'),
-    exportCsvBtn: document.getElementById('export-csv-btn'),
-    viewHistoryBtn: document.getElementById('view-history-btn'),
-    viewProgressBtn: document.getElementById('view-progress-btn'),
-    backToStartBtn: document.getElementById('back-to-start-btn'),
-    backToHistoryBtn: document.getElementById('back-to-history-btn'),
-    exportAllBtn: document.getElementById('export-all-btn'),
-    clearHistoryBtn: document.getElementById('clear-history-btn'),
-    startRecordingBtn: document.getElementById('start-recording-btn'),
-    stopRecordingBtn: document.getElementById('stop-recording-btn'),
-    readingPhase: document.getElementById('reading-phase'),
-    passage: document.getElementById('passage'),
-    questionText: document.getElementById('question-text'),
-    choices: document.getElementById('choices'),
-    feedback: document.getElementById('feedback'),
-    questionNumber: document.getElementById('question-number'),
-    timer: document.getElementById('timer'),
-    progress: document.getElementById('progress'),
-    historyList: document.getElementById('history-list'),
-    userIdDisplay: document.getElementById('user-id-display'),
-    progressChart: document.getElementById('progress-chart'),
-    progressStats: document.getElementById('progress-stats'),
-    recognitionStatus: document.getElementById('recognition-status'),
-    recognitionText: document.getElementById('recognition-text'),
-    recognizedText: document.getElementById('recognized-text'),
-    recognitionResult: document.getElementById('recognition-result'),
-    comparisonDisplay: document.getElementById('comparison-display'),
-    recognitionFeedback: document.getElementById('recognition-feedback'),
-    readingInstruction: document.getElementById('reading-instruction'),
-    currentUserId: document.getElementById('current-user-id'),
-    userIdInput: document.getElementById('user-id-input'),
-    loadUserIdBtn: document.getElementById('load-user-id-btn'),
-    copyUserIdBtn: document.getElementById('copy-user-id-btn'),
-    userIdMessage: document.getElementById('user-id-message'),
-};
-
-// イベントリスナーの設定
-elements.startBtn.addEventListener('click', startQuiz);
-elements.restartBtn.addEventListener('click', resetQuiz);
-elements.exportCsvBtn.addEventListener('click', exportScoresToCSV);
-elements.viewHistoryBtn.addEventListener('click', showHistory);
-elements.viewProgressBtn.addEventListener('click', showProgress);
-elements.backToStartBtn.addEventListener('click', () => showScreen('start'));
-elements.backToHistoryBtn.addEventListener('click', showHistory);
-elements.exportAllBtn.addEventListener('click', exportScoresToCSV);
-elements.clearHistoryBtn.addEventListener('click', clearHistory);
-elements.startRecordingBtn.addEventListener('click', startRecording);
-elements.stopRecordingBtn.addEventListener('click', stopRecording);
-elements.loadUserIdBtn.addEventListener('click', loadUserId);
-elements.copyUserIdBtn.addEventListener('click', copyUserId);
+// DOM要素の取得（グローバル変数として宣言のみ）
+let elements = {};
 
 // クイズ開始
 async function startQuiz() {
@@ -2502,6 +2448,72 @@ window.addEventListener('load', async () => {
     console.log('英語音読トレーニングアプリが起動しました');
     console.log('スコアを確認するには: printScoresToConsole()');
     console.log('スコアをCSV出力するには: exportScoresToCSV()');
+
+    // DOM要素の取得
+    elements = {
+        startScreen: document.getElementById('start-screen'),
+        questionScreen: document.getElementById('question-screen'),
+        resultScreen: document.getElementById('result-screen'),
+        historyScreen: document.getElementById('history-screen'),
+        progressScreen: document.getElementById('progress-screen'),
+        loading: document.getElementById('loading'),
+        startBtn: document.getElementById('start-btn'),
+        restartBtn: document.getElementById('restart-btn'),
+        exportCsvBtn: document.getElementById('export-csv-btn'),
+        viewHistoryBtn: document.getElementById('view-history-btn'),
+        viewProgressBtn: document.getElementById('view-progress-btn'),
+        backToStartBtn: document.getElementById('back-to-start-btn'),
+        backToHistoryBtn: document.getElementById('back-to-history-btn'),
+        exportAllBtn: document.getElementById('export-all-btn'),
+        clearHistoryBtn: document.getElementById('clear-history-btn'),
+        startRecordingBtn: document.getElementById('start-recording-btn'),
+        stopRecordingBtn: document.getElementById('stop-recording-btn'),
+        readingPhase: document.getElementById('reading-phase'),
+        passage: document.getElementById('passage'),
+        questionText: document.getElementById('question-text'),
+        choices: document.getElementById('choices'),
+        feedback: document.getElementById('feedback'),
+        questionNumber: document.getElementById('question-number'),
+        timer: document.getElementById('timer'),
+        progress: document.getElementById('progress'),
+        historyList: document.getElementById('history-list'),
+        userIdDisplay: document.getElementById('user-id-display'),
+        progressChart: document.getElementById('progress-chart'),
+        progressStats: document.getElementById('progress-stats'),
+        recognitionStatus: document.getElementById('recognition-status'),
+        recognitionText: document.getElementById('recognition-text'),
+        recognizedText: document.getElementById('recognized-text'),
+        recognitionResult: document.getElementById('recognition-result'),
+        comparisonDisplay: document.getElementById('comparison-display'),
+        recognitionFeedback: document.getElementById('recognition-feedback'),
+        readingInstruction: document.getElementById('reading-instruction'),
+        currentUserId: document.getElementById('current-user-id'),
+        userIdInput: document.getElementById('user-id-input'),
+        loadUserIdBtn: document.getElementById('load-user-id-btn'),
+        copyUserIdBtn: document.getElementById('copy-user-id-btn'),
+        userIdMessage: document.getElementById('user-id-message'),
+    };
+
+    // イベントリスナーの設定
+    elements.startBtn.addEventListener('click', startQuiz);
+    elements.restartBtn.addEventListener('click', resetQuiz);
+    elements.exportCsvBtn.addEventListener('click', exportScoresToCSV);
+    elements.viewHistoryBtn.addEventListener('click', showHistory);
+    elements.viewProgressBtn.addEventListener('click', showProgress);
+    elements.backToStartBtn.addEventListener('click', () => showScreen('start'));
+    elements.backToHistoryBtn.addEventListener('click', showHistory);
+    elements.exportAllBtn.addEventListener('click', exportScoresToCSV);
+    elements.clearHistoryBtn.addEventListener('click', clearHistory);
+    elements.startRecordingBtn.addEventListener('click', startRecording);
+    elements.stopRecordingBtn.addEventListener('click', stopRecording);
+    elements.loadUserIdBtn.addEventListener('click', loadUserId);
+    elements.copyUserIdBtn.addEventListener('click', copyUserId);
+
+    // バージョン表示を設定
+    const versionElement = document.getElementById('app-version');
+    if (versionElement) {
+        versionElement.textContent = `バージョン: ${APP_VERSION}`;
+    }
 
     // Firebaseを初期化（バックグラウンドで実行）
     await initializeFirebase();
