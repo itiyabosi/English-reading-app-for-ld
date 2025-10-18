@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英語音読トレーニング - 英検3級</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>英語音読トレーニング</h1>
+            <p class="subtitle">英検3級レベル - 4択問題</p>
+        </header>
+
+        <!-- スタート画面 -->
+        <div id="start-screen" class="screen active">
+            <div class="welcome-box">
+                <h2>ようこそ！</h2>
+                <p>このアプリでは、英語の文章を音読してから4択問題に答えることで、読解力とスピードを鍛えます。</p>
+                <h3>使い方：</h3>
+                <ol>
+                    <li>英語の文章が表示されます</li>
+                    <li>声に出して音読してください</li>
+                    <li>読み終わったら「読み終わった」ボタンを押します</li>
+                    <li>4つの選択肢から正しい答えを選びます</li>
+                </ol>
+                <button id="start-btn" class="btn btn-primary">スタート</button>
+            </div>
+        </div>
+
+        <!-- 問題画面 -->
+        <div id="question-screen" class="screen">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <div class="question-info">
+                <span id="question-number">問題 1/10</span>
+                <span id="timer" class="timer">0.0秒</span>
+            </div>
+
+            <!-- 音読＆解答フェーズ -->
+            <div id="reading-phase" class="phase">
+                <!-- 測定開始ボタン（最上部） -->
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+                    <button id="start-recording-btn" class="btn btn-primary">📊 測定開始</button>
+                    <button id="stop-recording-btn" class="btn btn-danger hidden">⏹ 停止</button>
+                </div>
+                <p class="instruction" id="reading-instruction">「測定開始」ボタンを押して、文章を声に出して読んでください</p>
+
+                <!-- 1. 文章 -->
+                <div class="passage-box">
+                    <h2>以下の文章を音読してください：</h2>
+                    <div id="passage" class="passage"></div>
+                </div>
+
+                <!-- 2. 問題と選択肢 -->
+                <div class="question-box">
+                    <h3>問題：</h3>
+                    <p id="question-text" class="question-text"></p>
+                </div>
+                <div id="choices" class="choices"></div>
+
+                <!-- 3. 音声認識の状態表示 -->
+                <div id="recognition-status" class="recognition-status hidden">
+                    <div class="recognition-indicator">
+                        <span class="mic-icon">🎤</span>
+                        <span id="recognition-text">音声を認識中...</span>
+                    </div>
+                    <div id="recognized-text" class="recognized-text"></div>
+                </div>
+
+                <!-- 4. 音声認識結果の比較表示 -->
+                <div id="recognition-result" class="recognition-result hidden">
+                    <h3>音読チェック結果：</h3>
+                    <div id="comparison-display" class="comparison-display"></div>
+                    <div id="recognition-feedback" class="recognition-feedback"></div>
+                </div>
+            </div>
+
+            <!-- フィードバック表示 -->
+            <div id="feedback" class="feedback hidden"></div>
+        </div>
+
+        <!-- 結果画面 -->
+        <div id="result-screen" class="screen">
+            <div class="result-box">
+                <h2>お疲れ様でした！</h2>
+                <div class="score-display">
+                    <div class="score-item">
+                        <h3>正解数</h3>
+                        <p class="score-value" id="final-score">0/10</p>
+                    </div>
+                    <div class="score-item">
+                        <h3>平均音読時間</h3>
+                        <p class="score-value" id="avg-reading-time">0.0秒</p>
+                    </div>
+                    <div class="score-item">
+                        <h3>平均解答時間</h3>
+                        <p class="score-value" id="avg-answer-time">0.0秒</p>
+                    </div>
+                </div>
+                <div class="result-details" id="result-details"></div>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button id="restart-btn" class="btn btn-primary">もう一度挑戦</button>
+                    <button id="export-csv-btn" class="btn btn-secondary">スコアをCSV出力</button>
+                    <button id="view-history-btn" class="btn btn-secondary">履歴を見る</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- スコア履歴画面 -->
+        <div id="history-screen" class="screen">
+            <div class="result-box">
+                <h2>スコア履歴</h2>
+                <div id="history-list" class="history-list"></div>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                    <button id="back-to-start-btn" class="btn btn-primary">トップに戻る</button>
+                    <button id="export-all-btn" class="btn btn-secondary">全履歴をCSV出力</button>
+                    <button id="clear-history-btn" class="btn btn-danger">履歴を削除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>問題を生成中...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
