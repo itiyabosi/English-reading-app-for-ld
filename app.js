@@ -18,7 +18,7 @@ async function initializeFirebase() {
     try {
         // Firebase SDKをCDNから動的に読み込み
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-        const { getFirestore, collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+        const { getFirestore, collection, addDoc, query, where, getDocs, orderBy } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
 
         // Firebaseアプリを初期化
         const firebaseApp = initializeApp(firebaseConfig);
@@ -30,6 +30,10 @@ async function initializeFirebase() {
         // グローバルにFirestore関数を保存
         window.firestoreAddDoc = addDoc;
         window.firestoreCollection = collection;
+        window.firestoreQuery = query;
+        window.firestoreWhere = where;
+        window.firestoreGetDocs = getDocs;
+        window.firestoreOrderBy = orderBy;
     } catch (error) {
         console.warn('Firebase初期化失敗（オフラインモードで続行）:', error);
         firebaseInitialized = false;
@@ -60,12 +64,15 @@ const elements = {
     questionScreen: document.getElementById('question-screen'),
     resultScreen: document.getElementById('result-screen'),
     historyScreen: document.getElementById('history-screen'),
+    progressScreen: document.getElementById('progress-screen'),
     loading: document.getElementById('loading'),
     startBtn: document.getElementById('start-btn'),
     restartBtn: document.getElementById('restart-btn'),
     exportCsvBtn: document.getElementById('export-csv-btn'),
     viewHistoryBtn: document.getElementById('view-history-btn'),
+    viewProgressBtn: document.getElementById('view-progress-btn'),
     backToStartBtn: document.getElementById('back-to-start-btn'),
+    backToHistoryBtn: document.getElementById('back-to-history-btn'),
     exportAllBtn: document.getElementById('export-all-btn'),
     clearHistoryBtn: document.getElementById('clear-history-btn'),
     startRecordingBtn: document.getElementById('start-recording-btn'),
@@ -79,6 +86,9 @@ const elements = {
     timer: document.getElementById('timer'),
     progress: document.getElementById('progress'),
     historyList: document.getElementById('history-list'),
+    userIdDisplay: document.getElementById('user-id-display'),
+    progressChart: document.getElementById('progress-chart'),
+    progressStats: document.getElementById('progress-stats'),
     recognitionStatus: document.getElementById('recognition-status'),
     recognitionText: document.getElementById('recognition-text'),
     recognizedText: document.getElementById('recognized-text'),
@@ -93,7 +103,9 @@ elements.startBtn.addEventListener('click', startQuiz);
 elements.restartBtn.addEventListener('click', resetQuiz);
 elements.exportCsvBtn.addEventListener('click', exportScoresToCSV);
 elements.viewHistoryBtn.addEventListener('click', showHistory);
+elements.viewProgressBtn.addEventListener('click', showProgress);
 elements.backToStartBtn.addEventListener('click', () => showScreen('start'));
+elements.backToHistoryBtn.addEventListener('click', showHistory);
 elements.exportAllBtn.addEventListener('click', exportScoresToCSV);
 elements.clearHistoryBtn.addEventListener('click', clearHistory);
 elements.startRecordingBtn.addEventListener('click', startRecording);
@@ -1060,8 +1072,12 @@ async function saveScoreToFirebase(scoreData) {
     }
 
     try {
+        // ユーザーIDを取得
+        const userId = getUserId();
+
         // 匿名データのみ送信（個人情報は含めない）
         const anonymousData = {
+            userId: userId, // ユーザー識別ID
             date: scoreData.date,
             correctCount: scoreData.correctCount,
             totalQuestions: scoreData.totalQuestions,
@@ -1082,7 +1098,7 @@ async function saveScoreToFirebase(scoreData) {
 
         // Firestoreに保存
         await window.firestoreAddDoc(window.firestoreCollection(db, 'userScores'), anonymousData);
-        console.log('✓ データベースに保存しました');
+        console.log('✓ データベースに保存しました（ユーザーID:', userId, '）');
     } catch (error) {
         console.warn('⚠️ データベース保存失敗（ローカルには保存済み）:', error);
     }
@@ -1099,6 +1115,26 @@ function getBrowserInfo() {
     else if (ua.indexOf('Edge') > -1) browser = 'Edge';
 
     return browser;
+}
+
+// ユーザーIDを取得または生成
+function getUserId() {
+    // LocalStorageからユーザーIDを取得
+    let userId = localStorage.getItem('anonymousUserId');
+
+    // IDが存在しない場合は新規生成
+    if (!userId) {
+        // ランダムなIDを生成（UUIDv4形式）
+        userId = 'user_' +
+                 Date.now().toString(36) + '_' +
+                 Math.random().toString(36).substring(2, 15);
+
+        // LocalStorageに保存
+        localStorage.setItem('anonymousUserId', userId);
+        console.log('✓ 新しいユーザーIDを生成しました:', userId);
+    }
+
+    return userId;
 }
 
 // すべてのスコアを取得
@@ -1222,6 +1258,166 @@ function clearHistory() {
         displayHistory();
         alert('履歴を削除しました。');
     }
+}
+
+// スコア推移画面を表示
+async function showProgress() {
+    showLoading(true);
+    showScreen('progress');
+
+    const userId = getUserId();
+    elements.userIdDisplay.textContent = `ユーザーID: ${userId}`;
+
+    if (!firebaseInitialized || !db) {
+        elements.progressChart.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">オフラインモードのため、推移データを取得できません。<br>インターネットに接続してデータ収集に同意すると、スコアの推移を確認できます。</p>';
+        elements.progressStats.innerHTML = '';
+        showLoading(false);
+        return;
+    }
+
+    try {
+        // Firestoreからユーザーのデータを取得
+        const q = window.firestoreQuery(
+            window.firestoreCollection(db, 'userScores'),
+            window.firestoreWhere('userId', '==', userId),
+            window.firestoreOrderBy('timestamp', 'asc')
+        );
+
+        const querySnapshot = await window.firestoreGetDocs(q);
+        const userScores = [];
+        querySnapshot.forEach((doc) => {
+            userScores.push(doc.data());
+        });
+
+        if (userScores.length === 0) {
+            elements.progressChart.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">まだデータがありません。<br>問題を解いてスコアを記録しましょう！</p>';
+            elements.progressStats.innerHTML = '';
+        } else {
+            // データを表示（グラフと統計）
+            displayProgressChart(userScores);
+            displayProgressStats(userScores);
+        }
+    } catch (error) {
+        console.error('スコア取得エラー:', error);
+        elements.progressChart.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 40px;">データの取得に失敗しました。<br>エラー: ' + error.message + '</p>';
+        elements.progressStats.innerHTML = '';
+    }
+
+    showLoading(false);
+}
+
+// スコア推移グラフを表示
+function displayProgressChart(userScores) {
+    if (userScores.length === 0) {
+        return;
+    }
+
+    // グラフ用のデータを整形
+    const chartData = userScores.map((score, index) => {
+        const date = new Date(score.timestamp);
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const accuracy = (score.correctCount / score.totalQuestions) * 100;
+
+        return {
+            index: index + 1,
+            date: dateStr,
+            accuracy: accuracy.toFixed(1),
+            correctCount: score.correctCount,
+            totalQuestions: score.totalQuestions,
+            avgReadingTime: score.avgReadingTime.toFixed(1),
+            avgAnswerTime: score.avgAnswerTime.toFixed(1)
+        };
+    });
+
+    // シンプルなテキストベースのグラフを作成
+    let chartHTML = '<div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #667eea;">';
+    chartHTML += '<h3 style="color: #667eea; margin-bottom: 20px; text-align: center;">正答率の推移</h3>';
+    chartHTML += '<div style="display: flex; flex-direction: column; gap: 10px;">';
+
+    chartData.forEach((data) => {
+        const barWidth = data.accuracy;
+        const barColor = data.accuracy >= 80 ? '#28a745' : data.accuracy >= 60 ? '#ffc107' : '#dc3545';
+
+        chartHTML += `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="min-width: 120px; font-size: 0.9em; color: #666;">${data.date}</div>
+                <div style="flex: 1; background: #f0f0f0; border-radius: 5px; height: 30px; position: relative;">
+                    <div style="background: ${barColor}; height: 100%; width: ${barWidth}%; border-radius: 5px; transition: width 0.3s;"></div>
+                    <div style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); font-weight: bold; color: #333; font-size: 0.9em;">${data.accuracy}%</div>
+                </div>
+                <div style="min-width: 80px; text-align: right; font-size: 0.9em; color: #667eea;">${data.correctCount}/${data.totalQuestions}問</div>
+            </div>
+        `;
+    });
+
+    chartHTML += '</div>';
+    chartHTML += '</div>';
+
+    elements.progressChart.innerHTML = chartHTML;
+}
+
+// スコア推移の統計情報を表示
+function displayProgressStats(userScores) {
+    if (userScores.length === 0) {
+        return;
+    }
+
+    // 統計を計算
+    const totalGames = userScores.length;
+    const accuracies = userScores.map(s => (s.correctCount / s.totalQuestions) * 100);
+    const readingTimes = userScores.map(s => s.avgReadingTime);
+    const answerTimes = userScores.map(s => s.avgAnswerTime);
+
+    const avgAccuracy = (accuracies.reduce((a, b) => a + b, 0) / totalGames).toFixed(1);
+    const maxAccuracy = Math.max(...accuracies).toFixed(1);
+    const minAccuracy = Math.min(...accuracies).toFixed(1);
+
+    const avgReadingTime = (readingTimes.reduce((a, b) => a + b, 0) / totalGames).toFixed(1);
+    const avgAnswerTime = (answerTimes.reduce((a, b) => a + b, 0) / totalGames).toFixed(1);
+
+    // 最新と最初のスコアを比較して改善度を計算
+    const firstAccuracy = accuracies[0];
+    const latestAccuracy = accuracies[accuracies.length - 1];
+    const improvement = (latestAccuracy - firstAccuracy).toFixed(1);
+    const improvementText = improvement > 0 ? `+${improvement}%` : `${improvement}%`;
+    const improvementColor = improvement >= 0 ? '#28a745' : '#dc3545';
+
+    // 統計情報を表示
+    let statsHTML = '<div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #667eea;">';
+    statsHTML += '<h3 style="color: #667eea; margin-bottom: 20px; text-align: center;">統計情報</h3>';
+    statsHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">';
+
+    statsHTML += `
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #667eea;">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">プレイ回数</div>
+            <div style="font-size: 2em; font-weight: bold; color: #667eea;">${totalGames}</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #667eea;">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">平均正答率</div>
+            <div style="font-size: 2em; font-weight: bold; color: #667eea;">${avgAccuracy}%</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #28a745;">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">最高正答率</div>
+            <div style="font-size: 2em; font-weight: bold; color: #28a745;">${maxAccuracy}%</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid ${improvementColor};">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">改善度</div>
+            <div style="font-size: 2em; font-weight: bold; color: ${improvementColor};">${improvementText}</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #17a2b8;">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">平均音読時間</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #17a2b8;">${avgReadingTime}秒</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #17a2b8;">
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">平均解答時間</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #17a2b8;">${avgAnswerTime}秒</div>
+        </div>
+    `;
+
+    statsHTML += '</div>';
+    statsHTML += '</div>';
+
+    elements.progressStats.innerHTML = statsHTML;
 }
 
 // 音声認識の初期化
