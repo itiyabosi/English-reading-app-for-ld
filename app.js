@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.08";
+const APP_VERSION = "1.09";
 
 // Firebase設定
 const firebaseConfig = {
@@ -922,7 +922,6 @@ function showResults() {
 
     // 合計行
     const totalRow = document.createElement('tr');
-    const totalReadingTime = app.results.reduce((sum, r) => sum + r.readingTime, 0);
 
     totalRow.innerHTML = `
         <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">平均</td>
