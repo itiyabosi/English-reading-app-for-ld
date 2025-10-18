@@ -137,8 +137,22 @@
                 <div id="history-list" class="history-list"></div>
                 <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
                     <button id="back-to-start-btn" class="btn btn-primary">トップに戻る</button>
+                    <button id="view-progress-btn" class="btn btn-secondary">📊 あなたの推移を見る</button>
                     <button id="export-all-btn" class="btn btn-secondary">全履歴をCSV出力</button>
                     <button id="clear-history-btn" class="btn btn-danger">履歴を削除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- スコア推移画面 -->
+        <div id="progress-screen" class="screen">
+            <div class="result-box">
+                <h2>📈 あなたのスコア推移</h2>
+                <div id="user-id-display" style="text-align: center; margin: 20px 0; color: #666; font-size: 0.9em;"></div>
+                <div id="progress-chart" style="margin: 30px 0;"></div>
+                <div id="progress-stats" style="margin: 30px 0;"></div>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                    <button id="back-to-history-btn" class="btn btn-primary">履歴に戻る</button>
                 </div>
             </div>
         </div>
