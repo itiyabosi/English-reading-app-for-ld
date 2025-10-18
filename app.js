@@ -1839,7 +1839,8 @@ function compareTextWithPassage() {
 
     // 結果を表示
     let comparisonHTML = '';
-    let incorrectCount = 0;
+    let incorrectCount = 0;  // 読み間違え（incorrect）のカウント
+    let missingCount = 0;     // 読み飛ばし（missing）のカウント
     const incorrectWords = [];
 
     matchResult.matches.forEach((match, index) => {
@@ -1871,7 +1872,7 @@ function compareTextWithPassage() {
                 `${displayWord}</span> `;
         } else if (match.type === 'missing') {
             // 読み飛ばし - 黄色でハイライト
-            incorrectCount++;
+            missingCount++;
             incorrectWords.push({
                 original: displayWord,
                 recognized: '(読み飛ばし)'
@@ -1884,11 +1885,14 @@ function compareTextWithPassage() {
     elements.comparisonDisplay.innerHTML = comparisonHTML;
     elements.recognitionResult.classList.remove('hidden');
 
-    // フィードバック
+    // フィードバック（読み飛ばしを考慮した精度計算）
     const totalWords = originalWords.length;
-    const correctCount = totalWords - incorrectCount;
-    const accuracy = (correctCount / totalWords) * 100;
-    const errorRate = (incorrectCount / totalWords) * 100;
+    const recognizedWords = totalWords - missingCount;  // 実際に読んだ単語数
+    const correctlyRecognized = recognizedWords - incorrectCount;  // 正しく読めた単語数
+
+    // 精度 = 正しく読めた単語 / 実際に読んだ単語（読み飛ばしは除外）
+    const accuracy = recognizedWords > 0 ? (correctlyRecognized / recognizedWords) * 100 : 0;
+    const totalErrorCount = incorrectCount + missingCount;
 
     // 音読時間を計算（分単位）
     const readingTime = app.readingStartTime ? (Date.now() - app.readingStartTime) / 1000 : 0;
@@ -1898,15 +1902,19 @@ function compareTextWithPassage() {
     let feedbackClass = '';
     let feedbackText = '';
 
-    if (incorrectCount === 0) {
+    // フィードバックの判定（読み間違えのみで判定、読み飛ばしは別表示）
+    if (totalErrorCount === 0) {
         feedbackClass = 'excellent';
         feedbackText = `完璧です！すべて正確に読めています！\n読速度: ${wordsPerMinute} wpm（分速${wordsPerMinute}語）`;
-    } else if (incorrectCount <= 2) {
+    } else if (accuracy >= 90) {
+        feedbackClass = 'excellent';
+        feedbackText = `素晴らしい！\n認識精度: ${accuracy.toFixed(1)}%\n読み間違え: ${incorrectCount}箇所 / 読み飛ばし: ${missingCount}箇所\n読速度: ${wordsPerMinute} wpm`;
+    } else if (accuracy >= 70) {
         feedbackClass = 'good';
-        feedbackText = `良くできました！\n読み間違え: ${incorrectCount}箇所（${errorRate.toFixed(1)}%）\n読速度: ${wordsPerMinute} wpm`;
+        feedbackText = `良くできました！\n認識精度: ${accuracy.toFixed(1)}%\n読み間違え: ${incorrectCount}箇所 / 読み飛ばし: ${missingCount}箇所\n読速度: ${wordsPerMinute} wpm`;
     } else {
         feedbackClass = 'needs-improvement';
-        feedbackText = `読み間違え: ${incorrectCount}箇所（${errorRate.toFixed(1)}%）\n読速度: ${wordsPerMinute} wpm\n赤色と黄色の単語を確認してください。`;
+        feedbackText = `認識精度: ${accuracy.toFixed(1)}%\n読み間違え: ${incorrectCount}箇所 / 読み飛ばし: ${missingCount}箇所\n読速度: ${wordsPerMinute} wpm\n赤色と黄色の単語を確認してください。`;
     }
 
     elements.recognitionFeedback.className = `recognition-feedback ${feedbackClass}`;
