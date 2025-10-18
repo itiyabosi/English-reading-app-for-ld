@@ -1,11 +1,12 @@
-// Firebase設定（後で自分の設定に置き換える）
+// Firebase設定
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBkTPGO_jtpyDwRopQKZBoBEkD2bP2S_CE",
+    authDomain: "english-reading-app-for-ld.firebaseapp.com",
+    projectId: "english-reading-app-for-ld",
+    storageBucket: "english-reading-app-for-ld.firebasestorage.app",
+    messagingSenderId: "681432750743",
+    appId: "1:681432750743:web:825787abfe00e0e34a27d2",
+    measurementId: "G-6T3CH70E59"
 };
 
 // Firebase初期化（グローバル変数）
