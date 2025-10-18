@@ -1603,6 +1603,34 @@ function resetRecordingUI() {
     elements.recognitionResult.classList.add('hidden');
 }
 
+// 全体的な類似度を計算（音声認識が完全に失敗していないかチェック）
+function calculateOverallSimilarity(originalWords, recognizedWords) {
+    if (originalWords.length === 0 || recognizedWords.length === 0) {
+        return 0;
+    }
+
+    // 方法1: 共通単語の割合をチェック
+    let commonWordCount = 0;
+    const originalWordsLower = originalWords.map(w => w.toLowerCase());
+    const recognizedWordsLower = recognizedWords.map(w => w.toLowerCase());
+
+    // 元の文章の各単語が、認識結果に含まれているか確認
+    originalWordsLower.forEach(originalWord => {
+        const found = recognizedWordsLower.some(recognizedWord => {
+            // 完全一致または類似単語（wordsAreSameを使用）
+            return wordsAreSame(originalWord, recognizedWord);
+        });
+        if (found) {
+            commonWordCount++;
+        }
+    });
+
+    // 共通単語の割合を計算
+    const similarity = commonWordCount / originalWords.length;
+
+    return similarity;
+}
+
 // テキスト比較とハイライト表示（高精度版）
 function compareTextWithPassage() {
     const question = app.questions[app.currentQuestionIndex];
@@ -1612,6 +1640,36 @@ function compareTextWithPassage() {
     const originalWords = originalText.split(/\s+/);
     const recognizedWords = recognizedText.split(/\s+/);
     const displayWords = question.passage.split(/\s+/);
+
+    // ステップ1: 全体的な類似度をチェック（音声認識が完全に失敗していないか確認）
+    const overallSimilarity = calculateOverallSimilarity(originalWords, recognizedWords);
+
+    // 類似度が20%未満の場合、音声認識が失敗していると判断
+    if (overallSimilarity < 0.2) {
+        elements.comparisonDisplay.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc3545;">
+                <p style="font-size: 1.2em; margin-bottom: 10px;">⚠️ 音声認識が正しく機能していない可能性があります</p>
+                <p style="font-size: 0.95em; color: #666; line-height: 1.6;">
+                    認識された内容が元の文章と大きく異なります。<br>
+                    以下の点を確認してください：<br>
+                    • マイクに向かって明瞭に発音していますか？<br>
+                    • 周囲が静かな環境ですか？<br>
+                    • ブラウザがマイクへのアクセスを許可していますか？
+                </p>
+                <details style="margin-top: 15px; text-align: left; font-size: 0.9em;">
+                    <summary style="cursor: pointer; color: #667eea;">認識された内容を確認</summary>
+                    <div style="background: #f8f9fa; padding: 10px; margin-top: 10px; border-radius: 5px;">
+                        <strong>元の文章:</strong><br>${question.passage}<br><br>
+                        <strong>認識された内容:</strong><br>${app.recognizedText || '(なし)'}
+                    </div>
+                </details>
+            </div>
+        `;
+        elements.recognitionResult.classList.remove('hidden');
+        elements.recognitionFeedback.className = 'recognition-feedback needs-improvement';
+        elements.recognitionFeedback.textContent = '音声認識が正しく機能しませんでした。もう一度お試しください。';
+        return;
+    }
 
     // 動的計画法で最適なマッチングを計算
     const matchResult = findOptimalMatching(originalWords, recognizedWords);
