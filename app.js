@@ -1603,34 +1603,6 @@ function resetRecordingUI() {
     elements.recognitionResult.classList.add('hidden');
 }
 
-// 全体的な類似度を計算（音声認識が完全に失敗していないかチェック）
-function calculateOverallSimilarity(originalWords, recognizedWords) {
-    if (originalWords.length === 0 || recognizedWords.length === 0) {
-        return 0;
-    }
-
-    // 方法1: 共通単語の割合をチェック
-    let commonWordCount = 0;
-    const originalWordsLower = originalWords.map(w => w.toLowerCase());
-    const recognizedWordsLower = recognizedWords.map(w => w.toLowerCase());
-
-    // 元の文章の各単語が、認識結果に含まれているか確認
-    originalWordsLower.forEach(originalWord => {
-        const found = recognizedWordsLower.some(recognizedWord => {
-            // 完全一致または類似単語（wordsAreSameを使用）
-            return wordsAreSame(originalWord, recognizedWord);
-        });
-        if (found) {
-            commonWordCount++;
-        }
-    });
-
-    // 共通単語の割合を計算
-    const similarity = commonWordCount / originalWords.length;
-
-    return similarity;
-}
-
 // テキスト比較とハイライト表示（高精度版）
 function compareTextWithPassage() {
     const question = app.questions[app.currentQuestionIndex];
@@ -1641,11 +1613,24 @@ function compareTextWithPassage() {
     const recognizedWords = recognizedText.split(/\s+/);
     const displayWords = question.passage.split(/\s+/);
 
-    // ステップ1: 全体的な類似度をチェック（音声認識が完全に失敗していないか確認）
-    const overallSimilarity = calculateOverallSimilarity(originalWords, recognizedWords);
+    // 動的計画法で最適なマッチングを計算
+    const matchResult = findOptimalMatching(originalWords, recognizedWords);
 
-    // 類似度が20%未満の場合、音声認識が失敗していると判断
-    if (overallSimilarity < 0.2) {
+    // ステップ1: マッチング結果から全体的な類似度をチェック
+    // 読み飛ばしは許容するが、認識された単語が元の文章と全く異なる場合は音声認識エラー
+    const matchedWordCount = matchResult.matches.filter(m =>
+        m.type === 'exact' || m.type === 'similar'
+    ).length;
+    const incorrectWordCount = matchResult.matches.filter(m =>
+        m.type === 'incorrect'
+    ).length;
+
+    // マッチング精度を計算（読み飛ばしは無視）
+    const recognizedValidWords = matchedWordCount + incorrectWordCount;
+    const matchAccuracy = recognizedValidWords > 0 ? matchedWordCount / recognizedValidWords : 0;
+
+    // 認識された単語のうち、90%以上が元の文章と全く異なる場合は音声認識エラー
+    if (recognizedValidWords >= 5 && matchAccuracy < 0.1) {
         elements.comparisonDisplay.innerHTML = `
             <div style="text-align: center; padding: 20px; color: #dc3545;">
                 <p style="font-size: 1.2em; margin-bottom: 10px;">⚠️ 音声認識が正しく機能していない可能性があります</p>
@@ -1670,9 +1655,6 @@ function compareTextWithPassage() {
         elements.recognitionFeedback.textContent = '音声認識が正しく機能しませんでした。もう一度お試しください。';
         return;
     }
-
-    // 動的計画法で最適なマッチングを計算
-    const matchResult = findOptimalMatching(originalWords, recognizedWords);
 
     // 自己修正を検出
     const selfCorrections = detectSelfCorrections(originalWords, app.recognitionHistory);
