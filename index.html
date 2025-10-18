@@ -120,6 +120,29 @@
                     </div>
                 </div>
                 <div class="result-details" id="result-details"></div>
+
+                <!-- ユーザーID管理セクション -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 30px; border: 2px solid #667eea;">
+                    <h3 style="color: #667eea; margin-bottom: 15px; text-align: center;">📋 あなたのユーザーID</h3>
+                    <div id="current-user-id-display" style="text-align: center; margin-bottom: 15px;">
+                        <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">現在のユーザーID：</p>
+                        <p style="font-size: 1.1em; font-weight: bold; color: #333; font-family: 'Courier New', monospace; background: white; padding: 10px; border-radius: 5px; word-break: break-all;" id="current-user-id"></p>
+                    </div>
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <p style="font-size: 0.85em; color: #666; line-height: 1.6;">
+                            💡 このIDを保存しておくと、別のブラウザやデバイスでも同じアカウントでスコアを記録できます。<br>
+                            IDを入力すると、過去のスコアが表示されます。
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <input type="text" id="user-id-input" placeholder="IDを入力（例: user_abc123_xyz）"
+                            style="padding: 10px 15px; font-size: 1em; border: 2px solid #ddd; border-radius: 5px; min-width: 300px; font-family: 'Courier New', monospace;">
+                        <button id="load-user-id-btn" class="btn btn-primary" style="padding: 10px 20px;">IDを読み込む</button>
+                        <button id="copy-user-id-btn" class="btn btn-secondary" style="padding: 10px 20px;">IDをコピー</button>
+                    </div>
+                    <div id="user-id-message" style="text-align: center; margin-top: 10px; font-size: 0.9em;"></div>
+                </div>
+
                 <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
                     <button id="restart-btn" class="btn btn-primary" style="font-size: 1.2em; padding: 20px 50px;">もう一度遊ぶ</button>
                 </div>

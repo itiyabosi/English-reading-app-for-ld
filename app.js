@@ -96,6 +96,11 @@ const elements = {
     comparisonDisplay: document.getElementById('comparison-display'),
     recognitionFeedback: document.getElementById('recognition-feedback'),
     readingInstruction: document.getElementById('reading-instruction'),
+    currentUserId: document.getElementById('current-user-id'),
+    userIdInput: document.getElementById('user-id-input'),
+    loadUserIdBtn: document.getElementById('load-user-id-btn'),
+    copyUserIdBtn: document.getElementById('copy-user-id-btn'),
+    userIdMessage: document.getElementById('user-id-message'),
 };
 
 // イベントリスナーの設定
@@ -110,6 +115,8 @@ elements.exportAllBtn.addEventListener('click', exportScoresToCSV);
 elements.clearHistoryBtn.addEventListener('click', clearHistory);
 elements.startRecordingBtn.addEventListener('click', startRecording);
 elements.stopRecordingBtn.addEventListener('click', stopRecording);
+elements.loadUserIdBtn.addEventListener('click', loadUserId);
+elements.copyUserIdBtn.addEventListener('click', copyUserId);
 
 // クイズ開始
 async function startQuiz() {
@@ -978,6 +985,11 @@ function showResults() {
 
     detailsContainer.appendChild(table);
 
+    // 現在のユーザーIDを表示
+    const userId = getUserId();
+    elements.currentUserId.textContent = userId;
+    elements.userIdMessage.textContent = '';
+
     // 各問題の詳細（折りたたみ可能）
     const detailsSection = document.createElement('div');
     detailsSection.innerHTML = '<h3 style="margin-top: 30px; margin-bottom: 15px; text-align: center;">問題の詳細</h3>';
@@ -1119,22 +1131,188 @@ function getBrowserInfo() {
 
 // ユーザーIDを取得または生成
 function getUserId() {
-    // LocalStorageからユーザーIDを取得
+    // 1. まずLocalStorageから手動設定されたIDを確認
     let userId = localStorage.getItem('anonymousUserId');
 
-    // IDが存在しない場合は新規生成
+    // 2. IDが存在しない場合は新規生成
     if (!userId) {
-        // ランダムなIDを生成（UUIDv4形式）
-        userId = 'user_' +
-                 Date.now().toString(36) + '_' +
-                 Math.random().toString(36).substring(2, 15);
-
-        // LocalStorageに保存
+        userId = generateNewUserId();
         localStorage.setItem('anonymousUserId', userId);
         console.log('✓ 新しいユーザーIDを生成しました:', userId);
     }
 
     return userId;
+}
+
+// 新しいユーザーIDを生成
+function generateNewUserId() {
+    return 'user_' +
+           Date.now().toString(36) + '_' +
+           Math.random().toString(36).substring(2, 15);
+}
+
+// IDを読み込む（ユーザーが入力したIDを設定）
+async function loadUserId() {
+    const inputId = elements.userIdInput.value.trim();
+
+    // 入力チェック
+    if (!inputId) {
+        showUserIdMessage('IDを入力してください。', 'error');
+        return;
+    }
+
+    // ID形式の簡易チェック
+    if (!inputId.startsWith('user_') || inputId.length < 15) {
+        showUserIdMessage('無効なID形式です。正しいIDを入力してください。', 'error');
+        return;
+    }
+
+    // Firebaseから過去のデータを確認
+    showLoading(true);
+
+    if (!firebaseInitialized || !db) {
+        // オフラインモード：警告を表示して続行
+        const confirmed = confirm(
+            'オフラインモードのため、このIDの過去のデータを確認できません。\n' +
+            'それでもこのIDを設定しますか？'
+        );
+
+        if (!confirmed) {
+            showLoading(false);
+            return;
+        }
+
+        // IDを設定
+        localStorage.setItem('anonymousUserId', inputId);
+        elements.currentUserId.textContent = inputId;
+        showUserIdMessage('IDを設定しました（オフラインモード）', 'success');
+        showLoading(false);
+        return;
+    }
+
+    try {
+        // Firestoreからこのユーザーのデータを取得
+        const q = window.firestoreQuery(
+            window.firestoreCollection(db, 'userScores'),
+            window.firestoreWhere('userId', '==', inputId)
+        );
+
+        const querySnapshot = await window.firestoreGetDocs(q);
+        const userScores = [];
+        querySnapshot.forEach((doc) => {
+            userScores.push(doc.data());
+        });
+
+        // IDを設定
+        localStorage.setItem('anonymousUserId', inputId);
+        elements.currentUserId.textContent = inputId;
+
+        if (userScores.length > 0) {
+            showUserIdMessage(
+                `✓ IDを読み込みました！過去のデータ: ${userScores.length}件`,
+                'success'
+            );
+
+            // 過去のスコアを表示（簡易版）
+            displayPastScores(userScores);
+        } else {
+            showUserIdMessage(
+                '✓ IDを設定しました（このIDの過去データはまだありません）',
+                'info'
+            );
+        }
+    } catch (error) {
+        console.error('ID読み込みエラー:', error);
+        showUserIdMessage('エラー: ' + error.message, 'error');
+    }
+
+    showLoading(false);
+}
+
+// IDをコピー
+async function copyUserId() {
+    const userId = getUserId();
+
+    try {
+        await navigator.clipboard.writeText(userId);
+        showUserIdMessage('✓ IDをクリップボードにコピーしました！', 'success');
+    } catch (error) {
+        // クリップボードAPIが使えない場合の代替手段
+        const textArea = document.createElement('textarea');
+        textArea.value = userId;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+
+        try {
+            document.execCommand('copy');
+            showUserIdMessage('✓ IDをクリップボードにコピーしました！', 'success');
+        } catch (err) {
+            showUserIdMessage('コピーに失敗しました。手動でコピーしてください。', 'error');
+        }
+
+        document.body.removeChild(textArea);
+    }
+}
+
+// ユーザーIDメッセージを表示
+function showUserIdMessage(message, type) {
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        info: '#17a2b8'
+    };
+
+    elements.userIdMessage.textContent = message;
+    elements.userIdMessage.style.color = colors[type] || '#666';
+
+    // 3秒後にメッセージを消す（エラーの場合は5秒）
+    setTimeout(() => {
+        elements.userIdMessage.textContent = '';
+    }, type === 'error' ? 5000 : 3000);
+}
+
+// 過去のスコアを表示（結果画面内に簡易表示）
+function displayPastScores(userScores) {
+    // 最新5件のみ表示
+    const recentScores = userScores
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 5);
+
+    let pastScoresHTML = '<div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px; border: 2px solid #667eea;">';
+    pastScoresHTML += '<h4 style="color: #667eea; margin-bottom: 10px;">📊 過去のスコア（最新5件）</h4>';
+    pastScoresHTML += '<div style="font-size: 0.9em;">';
+
+    recentScores.forEach((score, index) => {
+        const date = new Date(score.timestamp);
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const accuracy = ((score.correctCount / score.totalQuestions) * 100).toFixed(1);
+        const accuracyColor = accuracy >= 80 ? '#28a745' : accuracy >= 60 ? '#ffc107' : '#dc3545';
+
+        pastScoresHTML += `
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee;">
+                <span style="color: #666;">${dateStr}</span>
+                <span style="color: ${accuracyColor}; font-weight: bold;">${score.correctCount}/${score.totalQuestions} (${accuracy}%)</span>
+            </div>
+        `;
+    });
+
+    pastScoresHTML += '</div>';
+    pastScoresHTML += '<p style="margin-top: 10px; font-size: 0.85em; color: #666; text-align: center;">「📊 あなたの推移を見る」で全データを確認できます</p>';
+    pastScoresHTML += '</div>';
+
+    // メッセージの下に挿入
+    const messageDiv = elements.userIdMessage;
+    const existingPastScores = messageDiv.nextElementSibling;
+    if (existingPastScores && existingPastScores.id === 'past-scores-display') {
+        existingPastScores.remove();
+    }
+
+    const pastScoresDiv = document.createElement('div');
+    pastScoresDiv.id = 'past-scores-display';
+    pastScoresDiv.innerHTML = pastScoresHTML;
+    messageDiv.parentNode.insertBefore(pastScoresDiv, messageDiv.nextSibling);
 }
 
 // すべてのスコアを取得
