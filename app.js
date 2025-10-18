@@ -1,3 +1,40 @@
+// Firebase設定（後で自分の設定に置き換える）
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Firebase初期化（グローバル変数）
+let db = null;
+let firebaseInitialized = false;
+
+// Firebaseを初期化（非同期）
+async function initializeFirebase() {
+    try {
+        // Firebase SDKをCDNから動的に読み込み
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+        const { getFirestore, collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+
+        // Firebaseアプリを初期化
+        const firebaseApp = initializeApp(firebaseConfig);
+        db = getFirestore(firebaseApp);
+        firebaseInitialized = true;
+
+        console.log('✓ Firebase初期化完了');
+
+        // グローバルにFirestore関数を保存
+        window.firestoreAddDoc = addDoc;
+        window.firestoreCollection = collection;
+    } catch (error) {
+        console.warn('Firebase初期化失敗（オフラインモードで続行）:', error);
+        firebaseInitialized = false;
+    }
+}
+
 // アプリケーションの状態管理
 const app = {
     questions: [], // 生成された問題リスト
@@ -6,7 +43,7 @@ const app = {
     readingEndTime: null, // 音読完了時刻（80%検出時点）
     answerStartTime: null, // 解答開始時刻
     results: [], // 結果記録
-    totalQuestions: 10, // 問題総数
+    totalQuestions: 5, // 問題総数（5回に変更）
     recognition: null, // 音声認識オブジェクト
     recognizedText: '', // 認識されたテキスト
     isRecording: false, // 録音中フラグ
@@ -685,9 +722,9 @@ async function generateQuestions() {
         }
     ];
 
-    // 問題プールからランダムに10問を選択
+    // 問題プールからランダムに5問を選択
     const shuffled = questionPool.sort(() => Math.random() - 0.5);
-    app.questions = shuffled.slice(0, 10);
+    app.questions = shuffled.slice(0, 5);
 }
 
 // 問題表示
@@ -873,9 +910,64 @@ function showResults() {
     document.getElementById('avg-reading-time').textContent = `${avgReadingTime.toFixed(1)}秒`;
     document.getElementById('avg-answer-time').textContent = `${avgAnswerTime.toFixed(1)}秒`;
 
-    // 詳細結果
+    // 詳細結果（全5回分のスコアシート）
     const detailsContainer = document.getElementById('result-details');
-    detailsContainer.innerHTML = '<h3 style="margin-bottom: 15px;">詳細結果：</h3>';
+    detailsContainer.innerHTML = '<h3 style="margin-bottom: 15px; text-align: center;">全5回のスコアシート</h3>';
+
+    // テーブル形式でスコアシートを作成
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.marginBottom = '20px';
+
+    // ヘッダー行
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">問題</th>
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">正誤</th>
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">音読時間</th>
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">解答時間</th>
+        <th style="border: 1px solid #ddd; padding: 10px; background: #667eea; color: white;">合計時間</th>
+    `;
+    table.appendChild(headerRow);
+
+    // 各問題の結果行
+    app.results.forEach((result) => {
+        const row = document.createElement('tr');
+        const totalTime = result.readingTime + result.answerTime;
+        const correctMark = result.isCorrect ? '✓' : '✗';
+        const correctColor = result.isCorrect ? '#28a745' : '#dc3545';
+
+        row.innerHTML = `
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">第${result.questionNumber}問</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; color: ${correctColor}; font-weight: bold; font-size: 1.2em;">${correctMark}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${result.readingTime.toFixed(1)}秒</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${result.answerTime.toFixed(1)}秒</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">${totalTime.toFixed(1)}秒</td>
+        `;
+        table.appendChild(row);
+    });
+
+    // 合計行
+    const totalRow = document.createElement('tr');
+    const totalReadingTime = app.results.reduce((sum, r) => sum + r.readingTime, 0);
+    const totalAnswerTime = app.results.reduce((sum, r) => sum + r.answerTime, 0);
+    const grandTotal = totalReadingTime + totalAnswerTime;
+
+    totalRow.innerHTML = `
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">合計</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${correctCount}/${app.totalQuestions}</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${totalReadingTime.toFixed(1)}秒</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${totalAnswerTime.toFixed(1)}秒</td>
+        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold; background: #f8f9fa;">${grandTotal.toFixed(1)}秒</td>
+    `;
+    table.appendChild(totalRow);
+
+    detailsContainer.appendChild(table);
+
+    // 各問題の詳細（折りたたみ可能）
+    const detailsSection = document.createElement('div');
+    detailsSection.innerHTML = '<h3 style="margin-top: 30px; margin-bottom: 15px; text-align: center;">問題の詳細</h3>';
 
     app.results.forEach((result) => {
         const resultItem = document.createElement('div');
@@ -884,15 +976,17 @@ function showResults() {
             <div class="result-item-header">
                 問題 ${result.questionNumber}: ${result.isCorrect ? '✓ 正解' : '✗ 不正解'}
             </div>
-            <div>${result.question}</div>
-            <div style="margin-top: 5px;">あなたの解答: ${result.selectedAnswer}</div>
-            ${!result.isCorrect ? `<div>正解: ${result.correctAnswer}</div>` : ''}
-            <div class="result-item-time">
+            <div style="margin-top: 10px;"><strong>問題文:</strong> ${result.question}</div>
+            <div style="margin-top: 5px;"><strong>あなたの解答:</strong> ${result.selectedAnswer}</div>
+            ${!result.isCorrect ? `<div style="margin-top: 5px;"><strong>正解:</strong> ${result.correctAnswer}</div>` : ''}
+            <div class="result-item-time" style="margin-top: 10px;">
                 音読時間: ${result.readingTime.toFixed(1)}秒 / 解答時間: ${result.answerTime.toFixed(1)}秒
             </div>
         `;
-        detailsContainer.appendChild(resultItem);
+        detailsSection.appendChild(resultItem);
     });
+
+    detailsContainer.appendChild(detailsSection);
 }
 
 // 画面切り替え
@@ -939,10 +1033,71 @@ function resetQuiz() {
 
 // ローカルストレージにスコアを保存
 function saveScore(scoreData) {
+    // ローカルストレージに保存（既存機能）
     let scores = JSON.parse(localStorage.getItem('readingScores') || '[]');
     scores.push(scoreData);
     localStorage.setItem('readingScores', JSON.stringify(scores));
-    console.log('スコアを保存しました:', scoreData);
+    console.log('✓ ローカルストレージに保存しました');
+
+    // Firebaseにも保存（ユーザーが同意している場合のみ）
+    saveScoreToFirebase(scoreData);
+}
+
+// Firebaseにスコアを保存（非同期）
+async function saveScoreToFirebase(scoreData) {
+    // ユーザーの同意確認
+    const consentCheckbox = document.getElementById('consent-checkbox');
+    if (!consentCheckbox || !consentCheckbox.checked) {
+        console.log('ℹ️ データ収集が無効です（ユーザーが同意していません）');
+        return;
+    }
+
+    // Firebase未初期化の場合はスキップ
+    if (!firebaseInitialized || !db) {
+        console.log('ℹ️ Firebase未初期化（オフラインモード）');
+        return;
+    }
+
+    try {
+        // 匿名データのみ送信（個人情報は含めない）
+        const anonymousData = {
+            date: scoreData.date,
+            correctCount: scoreData.correctCount,
+            totalQuestions: scoreData.totalQuestions,
+            avgReadingTime: parseFloat(scoreData.avgReadingTime.toFixed(2)),
+            avgAnswerTime: parseFloat(scoreData.avgAnswerTime.toFixed(2)),
+            // 各問題の結果（問題文は送信しない）
+            results: scoreData.results.map(r => ({
+                questionNumber: r.questionNumber,
+                isCorrect: r.isCorrect,
+                readingTime: parseFloat(r.readingTime.toFixed(2)),
+                answerTime: parseFloat(r.answerTime.toFixed(2))
+            })),
+            // メタデータ
+            browser: getBrowserInfo(),
+            timestamp: new Date().toISOString(),
+            appVersion: '1.0.0'
+        };
+
+        // Firestoreに保存
+        await window.firestoreAddDoc(window.firestoreCollection(db, 'userScores'), anonymousData);
+        console.log('✓ データベースに保存しました');
+    } catch (error) {
+        console.warn('⚠️ データベース保存失敗（ローカルには保存済み）:', error);
+    }
+}
+
+// ブラウザ情報を取得（匿名化）
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let browser = 'Unknown';
+
+    if (ua.indexOf('Chrome') > -1) browser = 'Chrome';
+    else if (ua.indexOf('Safari') > -1) browser = 'Safari';
+    else if (ua.indexOf('Firefox') > -1) browser = 'Firefox';
+    else if (ua.indexOf('Edge') > -1) browser = 'Edge';
+
+    return browser;
 }
 
 // すべてのスコアを取得
@@ -1559,10 +1714,12 @@ function normalizeWord(word) {
     return word.toLowerCase();
 }
 
-// 2つの単語が同じ意味かチェック（数字考慮）
+// 2つの単語が同じ意味かチェック（数字・記号・略語など網羅的に対応）
 function wordsAreSame(word1, word2) {
-    word1 = word1.toLowerCase();
-    word2 = word2.toLowerCase();
+    // 正規化（小文字化、ピリオド・ハイフン除去）
+    const normalize = (w) => w.toLowerCase().replace(/[.\-'']/g, '');
+    word1 = normalize(word1);
+    word2 = normalize(word2);
 
     // 完全一致
     if (word1 === word2) return true;
@@ -1578,10 +1735,266 @@ function wordsAreSame(word1, word2) {
         '80': 'eighty', '90': 'ninety', '100': 'hundred'
     };
 
-    // word1が数字でword2が英単語（またはその逆）
+    // 序数のマッピング
+    const ordinalMap = {
+        '1st': ['first', '1st'],
+        '2nd': ['second', '2nd'],
+        '3rd': ['third', '3rd'],
+        '4th': ['fourth', '4th'],
+        '5th': ['fifth', '5th'],
+        '6th': ['sixth', '6th'],
+        '7th': ['seventh', '7th'],
+        '8th': ['eighth', '8th'],
+        '9th': ['ninth', '9th'],
+        '10th': ['tenth', '10th'],
+        '11th': ['eleventh', '11th'],
+        '12th': ['twelfth', '12th'],
+        '13th': ['thirteenth', '13th'],
+        '14th': ['fourteenth', '14th'],
+        '15th': ['fifteenth', '15th'],
+        '16th': ['sixteenth', '16th'],
+        '17th': ['seventeenth', '17th'],
+        '18th': ['eighteenth', '18th'],
+        '19th': ['nineteenth', '19th'],
+        '20th': ['twentieth', '20th'],
+        '21st': ['twentyfirst', 'twenty first', '21st'],
+        '30th': ['thirtieth', '30th'],
+        '100th': ['hundredth', '100th']
+    };
+
+    // 記号と英単語のマッピング（複数のバリエーション対応）
+    const symbolToWords = {
+        '$': ['dollar', 'dollars'],
+        '¥': ['yen'],
+        '€': ['euro', 'euros'],
+        '£': ['pound', 'pounds'],
+        '%': ['percent', 'percentage'],
+        '&': ['and'],
+        '@': ['at'],
+        '#': ['number', 'hashtag', 'pound'],
+        '*': ['asterisk', 'star'],
+        '+': ['plus'],
+        '=': ['equals', 'equal'],
+        '/': ['slash'],
+        '?': ['question mark'],
+        '!': ['exclamation mark', 'exclamation point']
+    };
+
+    // 単位のマッピング
+    const unitMap = {
+        'km': ['kilometer', 'kilometers', 'kilometre', 'kilometres'],
+        'm': ['meter', 'meters', 'metre', 'metres'],
+        'cm': ['centimeter', 'centimeters', 'centimetre', 'centimetres'],
+        'kg': ['kilogram', 'kilograms', 'kilogramme', 'kilogrammes'],
+        'g': ['gram', 'grams', 'gramme', 'grammes'],
+        'lb': ['pound', 'pounds'],
+        'oz': ['ounce', 'ounces'],
+        '℃': ['degrees', 'degrees celsius', 'celsius'],
+        '℉': ['degrees fahrenheit', 'fahrenheit'],
+        'mph': ['miles per hour'],
+        'kph': ['kilometers per hour', 'kilometres per hour']
+    };
+
+    // 短縮形のマッピング
+    const contractionMap = {
+        "dont": ["do not"],
+        "doesnt": ["does not"],
+        "didnt": ["did not"],
+        "cant": ["cannot", "can not"],
+        "couldnt": ["could not"],
+        "wouldnt": ["would not"],
+        "shouldnt": ["should not"],
+        "wont": ["will not"],
+        "isnt": ["is not"],
+        "arent": ["are not"],
+        "wasnt": ["was not"],
+        "werent": ["were not"],
+        "hasnt": ["has not"],
+        "havent": ["have not"],
+        "hadnt": ["had not"],
+        "im": ["i am"],
+        "youre": ["you are"],
+        "hes": ["he is", "he has"],
+        "shes": ["she is", "she has"],
+        "its": ["it is", "it has"],
+        "were": ["we are"],
+        "theyre": ["they are"],
+        "thats": ["that is"],
+        "whats": ["what is"],
+        "wheres": ["where is"],
+        "whos": ["who is", "who has"],
+        "hows": ["how is"],
+        "lets": ["let us"],
+        "theres": ["there is"],
+        "heres": ["here is"],
+        "ive": ["i have"],
+        "youve": ["you have"],
+        "weve": ["we have"],
+        "theyve": ["they have"],
+        "id": ["i would", "i had"],
+        "youd": ["you would", "you had"],
+        "hed": ["he would", "he had"],
+        "shed": ["she would", "she had"],
+        "wed": ["we would", "we had"],
+        "theyd": ["they would", "they had"],
+        "ill": ["i will"],
+        "youll": ["you will"],
+        "hell": ["he will"],
+        "shell": ["she will"],
+        "well": ["we will"],
+        "theyll": ["they will"]
+    };
+
+    // 敬称のマッピング
+    const titleMap = {
+        'mr': ['mister'],
+        'mrs': ['missus', 'misses'],
+        'ms': ['miss', 'miz'],
+        'dr': ['doctor'],
+        'prof': ['professor'],
+        'st': ['saint']
+    };
+
+    // 曜日の略語
+    const dayMap = {
+        'mon': ['monday'],
+        'tue': ['tuesday'],
+        'wed': ['wednesday'],
+        'thu': ['thursday'],
+        'fri': ['friday'],
+        'sat': ['saturday'],
+        'sun': ['sunday']
+    };
+
+    // 月の略語
+    const monthMap = {
+        'jan': ['january'],
+        'feb': ['february'],
+        'mar': ['march'],
+        'apr': ['april'],
+        'jun': ['june'],
+        'jul': ['july'],
+        'aug': ['august'],
+        'sep': ['september'],
+        'sept': ['september'],
+        'oct': ['october'],
+        'nov': ['november'],
+        'dec': ['december']
+    };
+
+    // その他の略語
+    const abbreviationMap = {
+        'vs': ['versus'],
+        'etc': ['et cetera', 'etcetera'],
+        'eg': ['for example'],
+        'ie': ['that is'],
+        'am': ['a m', 'am'],
+        'pm': ['p m', 'pm'],
+        'ok': ['okay'],
+        'okay': ['ok'],
+        'oclock': ['o clock'],
+        'tv': ['television'],
+        'pc': ['personal computer'],
+        'usa': ['united states', 'united states of america'],
+        'uk': ['united kingdom'],
+        'asap': ['as soon as possible']
+    };
+
+    // 同音異義語（発音が同じなので同一扱い）
+    const homophoneGroups = [
+        ['two', 'to', 'too'],
+        ['there', 'their', 'theyre'],
+        ['your', 'youre'],
+        ['its', 'its'],
+        ['right', 'write'],
+        ['no', 'know'],
+        ['by', 'buy', 'bye'],
+        ['four', 'for'],
+        ['one', 'won'],
+        ['hour', 'our'],
+        ['hear', 'here'],
+        ['sea', 'see'],
+        ['meet', 'meat'],
+        ['week', 'weak'],
+        ['wear', 'where'],
+        ['new', 'knew'],
+        ['blue', 'blew'],
+        ['break', 'brake'],
+        ['son', 'sun'],
+        ['ate', 'eight']
+    ];
+
+    // 米英スペリングの違い
+    const spellingVariants = [
+        ['color', 'colour'],
+        ['center', 'centre'],
+        ['meter', 'metre'],
+        ['theater', 'theatre'],
+        ['gray', 'grey'],
+        ['favorite', 'favourite'],
+        ['honor', 'honour'],
+        ['labor', 'labour'],
+        ['neighbor', 'neighbour'],
+        ['flavor', 'flavour'],
+        ['organize', 'organise'],
+        ['realize', 'realise'],
+        ['recognize', 'recognise']
+    ];
+
+    // チェック関数
+    const checkInMap = (w1, w2, map) => {
+        for (const [key, values] of Object.entries(map)) {
+            const allVariants = [key, ...values];
+            if (allVariants.includes(w1) && allVariants.includes(w2)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const checkInGroups = (w1, w2, groups) => {
+        for (const group of groups) {
+            if (group.includes(w1) && group.includes(w2)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // 数字マッチング
     if (numberToWord[word1] === word2 || numberToWord[word2] === word1) {
         return true;
     }
+
+    // 序数マッチング
+    if (checkInMap(word1, word2, ordinalMap)) return true;
+
+    // 記号マッチング
+    if (checkInMap(word1, word2, symbolToWords)) return true;
+
+    // 単位マッチング
+    if (checkInMap(word1, word2, unitMap)) return true;
+
+    // 短縮形マッチング
+    if (checkInMap(word1, word2, contractionMap)) return true;
+
+    // 敬称マッチング
+    if (checkInMap(word1, word2, titleMap)) return true;
+
+    // 曜日マッチング
+    if (checkInMap(word1, word2, dayMap)) return true;
+
+    // 月マッチング
+    if (checkInMap(word1, word2, monthMap)) return true;
+
+    // その他の略語マッチング
+    if (checkInMap(word1, word2, abbreviationMap)) return true;
+
+    // 同音異義語マッチング
+    if (checkInGroups(word1, word2, homophoneGroups)) return true;
+
+    // 米英スペリングマッチング
+    if (checkInGroups(word1, word2, spellingVariants)) return true;
 
     return false;
 }
@@ -1633,8 +2046,11 @@ function levenshteinDistance(str1, str2) {
 }
 
 // ページ読み込み時に実行
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     console.log('英語音読トレーニングアプリが起動しました');
     console.log('スコアを確認するには: printScoresToConsole()');
     console.log('スコアをCSV出力するには: exportScoresToCSV()');
+
+    // Firebaseを初期化（バックグラウンドで実行）
+    await initializeFirebase();
 });

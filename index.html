@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英語音読トレーニング - 英検3級</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase設定は app.js で行います
+    </script>
 </head>
 <body>
     <div class="container">
@@ -20,12 +25,26 @@
                 <p>このアプリでは、英語の文章を音読してから4択問題に答えることで、読解力とスピードを鍛えます。</p>
                 <h3>使い方：</h3>
                 <ol>
-                    <li>英語の文章が表示されます</li>
-                    <li>声に出して音読してください</li>
-                    <li>読み終わったら「読み終わった」ボタンを押します</li>
+                    <li>英語の文章が表示されます（全5問）</li>
+                    <li>「測定開始」ボタンを押して声に出して音読してください</li>
                     <li>4つの選択肢から正しい答えを選びます</li>
+                    <li>5問終了後、全問のスコアシートが表示されます</li>
                 </ol>
-                <button id="start-btn" class="btn btn-primary">スタート</button>
+
+                <!-- プライバシー通知 -->
+                <div class="privacy-notice">
+                    <p style="font-size: 0.9em; color: #666; line-height: 1.6; margin: 20px 0 10px 0;">
+                        ℹ️ このアプリでは、学習データの改善のため、スコアデータ（正解数・時間など）を匿名で収集します。
+                        個人を特定できる情報は一切収集しません。
+                        <a href="privacy.html" target="_blank" style="color: #667eea;">プライバシーポリシー</a>
+                    </p>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="consent-checkbox" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 0.95em;">データ収集に同意する（任意）</span>
+                    </label>
+                </div>
+
+                <button id="start-btn" class="btn btn-primary" style="margin-top: 20px;">スタート</button>
             </div>
         </div>
 
@@ -35,7 +54,7 @@
                 <div class="progress-fill" id="progress"></div>
             </div>
             <div class="question-info">
-                <span id="question-number">問題 1/10</span>
+                <span id="question-number">問題 1/5</span>
                 <span id="timer" class="timer">0.0秒</span>
             </div>
 
@@ -101,8 +120,10 @@
                     </div>
                 </div>
                 <div class="result-details" id="result-details"></div>
-                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                    <button id="restart-btn" class="btn btn-primary">もう一度挑戦</button>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
+                    <button id="restart-btn" class="btn btn-primary" style="font-size: 1.2em; padding: 20px 50px;">もう一度遊ぶ</button>
+                </div>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px;">
                     <button id="export-csv-btn" class="btn btn-secondary">スコアをCSV出力</button>
                     <button id="view-history-btn" class="btn btn-secondary">履歴を見る</button>
                 </div>
@@ -129,6 +150,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
