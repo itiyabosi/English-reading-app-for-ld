@@ -1,5 +1,5 @@
 // アプリバージョン
-const APP_VERSION = "1.10";
+const APP_VERSION = "1.11";
 
 // Firebase設定
 const firebaseConfig = {
@@ -1292,10 +1292,10 @@ function exportScoresToCSV() {
     csv += '日時,問題番号,正誤,音読時間(秒),解答時間(秒),問題文,あなたの解答,正解\n';
 
     scores.forEach(score => {
-        const date = new Date(score.date).toLocaleString('ja-JP');
+        const scoreDate = new Date(score.date).toLocaleString('ja-JP');
         score.results.forEach(result => {
             const correct = result.isCorrect ? '正解' : '不正解';
-            csv += `${date},${result.questionNumber},${correct},${result.readingTime.toFixed(1)},${result.answerTime.toFixed(1)},"${result.question}","${result.selectedAnswer}","${result.correctAnswer}"\n`;
+            csv += `${scoreDate},${result.questionNumber},${correct},${result.readingTime.toFixed(1)},${result.answerTime.toFixed(1)},"${result.question}","${result.selectedAnswer}","${result.correctAnswer}"\n`;
         });
     });
 
@@ -1486,15 +1486,15 @@ function displayProgressChart(userScores) {
     chartHTML += '<div style="display: flex; flex-direction: column; gap: 10px;">';
 
     chartData.forEach((data) => {
-        const barWidth = (data.wpm / maxWPM) * 100;
+        const wpmBarWidth = (data.wpm / maxWPM) * 100;
         // WPMの色分け：150以上=緑、100-150=黄、100未満=赤
-        const barColor = data.wpm >= 150 ? '#28a745' : data.wpm >= 100 ? '#ffc107' : '#dc3545';
+        const wpmBarColor = data.wpm >= 150 ? '#28a745' : data.wpm >= 100 ? '#ffc107' : '#dc3545';
 
         chartHTML += `
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="min-width: 120px; font-size: 0.9em; color: #666;">${data.date}</div>
                 <div style="flex: 1; background: #f0f0f0; border-radius: 5px; height: 30px; position: relative;">
-                    <div style="background: ${barColor}; height: 100%; width: ${barWidth}%; border-radius: 5px; transition: width 0.3s;"></div>
+                    <div style="background: ${wpmBarColor}; height: 100%; width: ${wpmBarWidth}%; border-radius: 5px; transition: width 0.3s;"></div>
                     <div style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); font-weight: bold; color: #333; font-size: 0.9em;">${data.wpm} WPM</div>
                 </div>
             </div>
@@ -1861,11 +1861,11 @@ function compareTextWithPassage() {
 
     // フィードバック（読み飛ばしを考慮した精度計算）
     const totalWords = originalWords.length;
-    const recognizedWords = totalWords - missingCount;  // 実際に読んだ単語数
-    const correctlyRecognized = recognizedWords - incorrectCount;  // 正しく読めた単語数
+    const actuallyReadWords = totalWords - missingCount;  // 実際に読んだ単語数
+    const correctlyRecognized = actuallyReadWords - incorrectCount;  // 正しく読めた単語数
 
     // 精度 = 正しく読めた単語 / 実際に読んだ単語（読み飛ばしは除外）
-    const accuracy = recognizedWords > 0 ? (correctlyRecognized / recognizedWords) * 100 : 0;
+    const accuracy = actuallyReadWords > 0 ? (correctlyRecognized / actuallyReadWords) * 100 : 0;
     const totalErrorCount = incorrectCount + missingCount;
 
     // 音読時間を計算（分単位）
@@ -1980,18 +1980,18 @@ function findOptimalMatching(originalWords, recognizedWords) {
 
             // ケース2: 元単語[i]が読み飛ばされた（認識単語を消費しない）
             if (i < n) {
-                const penalty = -5; // 読み飛ばしペナルティ
-                if (dp[i + 1][j] < dp[i][j] + penalty) {
-                    dp[i + 1][j] = dp[i][j] + penalty;
+                const skipPenalty = -5; // 読み飛ばしペナルティ
+                if (dp[i + 1][j] < dp[i][j] + skipPenalty) {
+                    dp[i + 1][j] = dp[i][j] + skipPenalty;
                     path[i + 1][j] = { type: 'skip', i, j };
                 }
             }
 
             // ケース3: 余分な単語が認識された（元単語を消費しない）
             if (j < m) {
-                const penalty = -2; // 余分な単語ペナルティ
-                if (dp[i][j + 1] < dp[i][j] + penalty) {
-                    dp[i][j + 1] = dp[i][j] + penalty;
+                const extraPenalty = -2; // 余分な単語ペナルティ
+                if (dp[i][j + 1] < dp[i][j] + extraPenalty) {
+                    dp[i][j + 1] = dp[i][j] + extraPenalty;
                     path[i][j + 1] = { type: 'extra', i, j };
                 }
             }
