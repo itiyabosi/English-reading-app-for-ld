@@ -61,8 +61,8 @@ const app = {
 // タイマー更新用
 let timerInterval = null;
 
-// DOM要素の取得（グローバル変数として宣言のみ）
-let elements = {};
+// DOM要素の取得（ページ読み込み後に初期化される）
+let elements = null;
 
 // クイズ開始
 async function startQuiz() {
@@ -2443,8 +2443,8 @@ function levenshteinDistance(str1, str2) {
     return matrix[str2.length][str1.length];
 }
 
-// ページ読み込み時に実行
-window.addEventListener('load', async () => {
+// 初期化関数（type="module"スクリプトはDOM読み込み後に実行される）
+function initializeApp() {
     console.log('英語音読トレーニングアプリが起動しました');
     console.log('スコアを確認するには: printScoresToConsole()');
     console.log('スコアをCSV出力するには: exportScoresToCSV()');
@@ -2494,6 +2494,13 @@ window.addEventListener('load', async () => {
         userIdMessage: document.getElementById('user-id-message'),
     };
 
+    // 要素が正しく取得できたか確認
+    console.log('DOM要素の取得完了:', elements.startBtn ? '成功' : '失敗');
+    if (!elements.startBtn) {
+        console.error('スタートボタンが見つかりません！');
+        return;
+    }
+
     // イベントリスナーの設定
     elements.startBtn.addEventListener('click', startQuiz);
     elements.restartBtn.addEventListener('click', resetQuiz);
@@ -2509,12 +2516,20 @@ window.addEventListener('load', async () => {
     elements.loadUserIdBtn.addEventListener('click', loadUserId);
     elements.copyUserIdBtn.addEventListener('click', copyUserId);
 
+    console.log('イベントリスナーの設定完了');
+
     // バージョン表示を設定
     const versionElement = document.getElementById('app-version');
     if (versionElement) {
         versionElement.textContent = `バージョン: ${APP_VERSION}`;
+        console.log('バージョン表示を設定しました:', APP_VERSION);
+    } else {
+        console.error('バージョン表示要素が見つかりません');
     }
 
     // Firebaseを初期化（バックグラウンドで実行）
-    await initializeFirebase();
-});
+    initializeFirebase();
+}
+
+// アプリを初期化
+initializeApp();
